@@ -1,0 +1,34 @@
+---
+# tasks file for pre-setup
+#
+- block:
+    - name: Check if logical volume needs extending
+      shell: "lvdisplay --units g /dev/rootvg/rootlv | grep 'LV Size' | awk '{ print $3 }'"
+      register: lv_size
+      failed_when: lv_size.rc != 0
+
+    - name: Debug lv_size
+      debug:
+         var: lv_size
+
+    - block:
+        - name: Extend logical volume if free space is less than threshold {{ lv_extension_threshold }}
+          lvol:
+            vg: rootvg
+            lv: rootlv
+            size: "{{ lv_extension_threshold }}G"
+          register: lv_extend  
+          when: lv_size.stdout_lines[0] | int < lv_extension_threshold
+      
+        - name: Debug lv_size
+          debug:
+             var: lv_extend
+
+        - name: Extend logical volume to maximum if free space
+          lvol:
+            vg: rootvg
+            lv: rootlv
+            size: +100%FREE
+          when: lv_extend.changed  
+                        
+  become: yes      
