@@ -1,0 +1,47 @@
+---
+# tasks file for swapspace
+- block:
+    - name: Check if swap space already exists
+      shell: swapon --show | grep '/swapfile_oracle'
+      register: swap_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Create swap file if not exists
+      command: fallocate -l {{ oracle_swapspace }}G /swapfile_oracle
+      when: swap_check.rc != 0
+      ignore_errors: yes
+
+    - name: Set permissions on swap file
+      command: chmod 600 /swapfile_oracle
+      when: swap_check.rc != 0
+
+    - name: Create swap
+      command: mkswap /swapfile_oracle
+      when: swap_check.rc != 0
+
+    - name: Enable swap
+      command: swapon /swapfile_oracle
+      when: swap_check.rc != 0
+
+    - name: Add swap entry to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: '/swapfile_oracle   none    swap    sw    0   0'
+        state: present
+      when: swap_check.rc != 0
+
+    - name: Display swap information
+      shell: swapon --show
+      register: swap_info
+
+    - debug:
+        var: swap_info.stdout
+
+    - name: Display memory information
+      shell: free -m
+      register: memory_info
+
+    - debug:
+        var: memory_info.stdout
+  become: yes        

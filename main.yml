@@ -4,4 +4,6 @@
   vars_files:
     - vars.yml  
   roles:
-      - pre-setup
+      - lvextend
+      - partitions-mount
+      - swapspace  

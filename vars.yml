@@ -1,2 +1,18 @@
 # vars.yml
 lv_extension_threshold: 30
+
+disks:
+  - name: /dev/sdc
+    mount_point: /u01
+  - name: /dev/sdd
+    mount_point: /redo
+  - name: /dev/sde
+    mount_point: /undo
+  - name: /dev/sdf
+    mount_point: /archive
+  #- name: /dev/sdg
+  #mount_point: /tmptsb
+  #
+ 
+oracle_swapspace: 1
+    
