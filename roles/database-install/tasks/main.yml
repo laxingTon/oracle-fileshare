@@ -1,0 +1,82 @@
+---
+# tasks file for database-install
+- block:
+    - name: Ensure software directory exists
+      stat:
+        path: /opt/oracle/softwar
+      register: software_dir
+
+    - name: Unzip Oracle DB Infrastructure Software
+      unarchive:
+        src: /opt/oracle/software/LINUX.X64_193000_db_home.zip  
+        dest: /opt/oracle/product/19.3.0/db
+        remote_src: yes
+        extra_opts: "-q"
+      become_user: oracle
+
+    - name: Change ownership of /opt/oracle to oracle:oinstall
+      file:
+        path: /opt/oracle
+        owner: oracle
+        group: oinstall
+        recurse: yes
+        state: directory      
+
+    - name: Check if response file exists
+      stat:
+        path: /opt/oracle/product/19.3.0/db/install/response/db_install.rsp
+      register: response_file_stat
+      become_user: oracle
+
+    - name: Create backup if response file exists
+      shell: "cp -prf /opt/oracle/product/19.3.0/db/install/response/db_install.rsp /opt/oracle/product/19.3.0/db/install/response/db_install.rsp.bkp"
+      when: response_file_stat.stat.exists
+      become_user: oracle
+
+    - name: Modify response file
+      lineinfile:
+        path: /opt/oracle/product/19.3.0/db/install/response/db_install.rsp
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^oracle.install.option=', line: 'oracle.install.option=INSTALL_DB_SWONLY' }
+        - { regexp: '^UNIX_GROUP_NAME=', line: 'UNIX_GROUP_NAME=oinstall' }
+        - { regexp: '^INVENTORY_LOCATION=', line: 'INVENTORY_LOCATION=/opt/oracle/oraInventory' }
+        - { regexp: '^ORACLE_HOME=', line: 'ORACLE_HOME=/opt/oracle/product/19.3.0/db' }
+        - { regexp: '^ORACLE_BASE=', line: 'ORACLE_BASE=/opt/oracle' }
+        - { regexp: '^oracle.install.db.InstallEdition=', line: 'oracle.install.db.InstallEdition=EE' }
+        - { regexp: '^oracle.install.db.OSDBA_GROUP=', line: 'oracle.install.db.OSDBA_GROUP=oinstall' }
+        - { regexp: '^oracle.install.db.OSOPER_GROUP=', line: 'oracle.install.db.OSOPER_GROUP=dba' }
+        - { regexp: '^oracle.install.db.OSBACKUPDBA_GROUP=', line: 'oracle.install.db.OSBACKUPDBA_GROUP=oinstall' }
+        - { regexp: '^oracle.install.db.OSDGDBA_GROUP=', line: 'oracle.install.db.OSDGDBA_GROUP=oinstall' }
+        - { regexp: '^oracle.install.db.OSKMDBA_GROUP=', line: 'oracle.install.db.OSKMDBA_GROUP=oinstall' }
+        - { regexp: '^oracle.install.db.OSRACDBA_GROUP=', line: 'oracle.install.db.OSRACDBA_GROUP=oinstall' }
+        - { regexp: '^oracle.install.db.rootconfig.executeRootScript=', line: 'oracle.install.db.rootconfig.executeRootScript=false' }
+        - { regexp: '^oracle.install.db.ConfigureAsContainerDB=', line: 'oracle.install.db.ConfigureAsContainerDB=false' }
+        - { regexp: '^oracle.install.db.config.starterdb.memoryOption=', line: 'oracle.install.db.config.starterdb.memoryOption=false' }
+        - { regexp: '^oracle.install.db.config.starterdb.installExampleSchemas=', line: 'oracle.install.db.config.starterdb.installExampleSchemas=false' }
+        - { regexp: '^oracle.install.db.config.starterdb.managementOption=', line: 'oracle.install.db.config.starterdb.managementOption=DEFAULT' }
+        - { regexp: '^oracle.install.db.config.starterdb.enableRecovery=', line: 'oracle.install.db.config.starterdb.enableRecovery=false' }
+      become_user: oracle  
+      when: response_file_stat.stat.exists
+
+    - name: Run prerequisites check
+      shell: "/opt/oracle/product/19.3.0/db/runInstaller -executePrereqs -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp"
+      register: prereq_check_result
+      become_user: oracle
+      ignore_errors: yes
+
+    - name: Check prerequisites check result
+      fail:
+        msg: "Prerequisites check failed. Please review the logs."
+      when: prereq_check_result.rc != 0
+
+    - name: Start Silent Database Installation
+      shell: "/opt/oracle/product/19.3.0/db/runInstaller -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp"
+      register: db_installation_result
+      when: prereq_check_result.rc == 0
+
+    - name: Execute root.sh
+      shell: "/opt/oracle/product/19.3.0/db/root.sh"
+      when: db_installation_result is succeeded
+  become: yes    
