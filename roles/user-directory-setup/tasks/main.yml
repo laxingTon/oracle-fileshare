@@ -38,6 +38,14 @@
         groups: dba
       when: oracle_user.rc != 0
 
+    - name: Change ownership of /opt/oracle to oracle:oinstall
+      file:
+        path: /opt/oracle
+        owner: oracle
+        group: oinstall
+        recurse: yes
+        state: directory      
+
     - name: Create Oracle Inventory Directory
       file:
         path: /opt/oracle/oraInventory

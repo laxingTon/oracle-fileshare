@@ -8,4 +8,5 @@
       - partitions-mount
       - swapspace
       - user-directory-setup
-      - reboot  
+      - reboot
+      - grid-install  

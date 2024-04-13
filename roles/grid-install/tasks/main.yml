@@ -1,0 +1,257 @@
+---
+# tasks file for grid-install
+#
+- block:
+  - name: Ensure software directory exists
+    stat:
+      path: /opt/oracle/software
+    register: software_dir
+
+  - name: Copy file using rsync
+    synchronize:
+        src: "{{ source_oracle_software_location }}"
+        dest: /opt/oracle/software
+    when: software_dir.stat.exists
+
+  - name: Check if Oracle Grid Infrastructure Software is already extracted
+    stat:
+      path: /opt/oracle/product/19.3.0/grid
+    register: grid_infrastructure_dir    
+
+  - name: Unzip Oracle Grid Infrastructure Software
+    unarchive:
+        src: /opt/oracle/software/LINUX.X64_193000_grid_home.zip
+        dest: /opt/oracle/product/19.3.0/grid
+        remote_src: yes
+        extra_opts: "-q"
+    become_user: oracle
+    when: not grid_infrastructure_dir.stat.exists
+
+  - name: Change ownership of /opt/oracle to oracle:oinstall
+    file:
+      path: /opt/oracle
+      owner: oracle
+      group: oinstall
+      recurse: yes
+      state: directory
+   
+
+  - name: Check if oracle-database-preinstall-19c is installed
+    command: rpm -q i oracle-database-preinstall
+    register: oracle_database_preinstall_installed
+    changed_when: false
+    failed_when: false
+
+  - name: Install oracle-database-preinstall-19c
+    yum:
+      name: /opt/oracle/software/oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm
+      state: present
+    when: oracle_database_preinstall_installed.rc != 0
+
+
+  - name: Check if cvuqdisk is installed
+    command: rpm -q cvuqdisk
+    register: cvuqdisk_installed
+    changed_when: false
+    failed_when: false
+
+  - name: Install cvuqdisk
+    yum:
+      name: /opt/oracle/product/19.3.0/grid/cv/rpm/cvuqdisk-1.0.10-1.rpm
+      state: present
+    when: cvuqdisk_installed.rc != 0 
+
+  - name: Install required packages
+    yum:
+      name: "{{ item }}"
+      state: present
+    loop:
+      - bc
+      - binutils
+      - elfutils-libelf
+      #- elfutils-libelf-devel
+      #- fontconfig-devel
+      - glibc
+      - glibc-devel
+      - ksh
+      - libaio
+      - libaio-devel
+      - libXrender
+      - libXrender-devel
+      - libX11
+      - libXau
+      - libXi
+      - libXtst
+      - libgcc
+      - librdmacm-devel
+      - libstdc++
+      - libstdc++-devel
+      - libxcb
+      - make
+      - smartmontools
+      - sysstat
+      - libnsl
+      - libnsl.i686
+      - libnsl2
+      - libnsl2.i686
+      - xorg-x11-server-Xorg
+      - xorg-x11-xauth
+      - xorg-x11-apps
+      - sysfsutils
+      - xterm
+
+  - name: Update all packages
+    yum:
+      name: "*"
+      state: latest
+
+  - name: Execute sshUserSetup.sh script if exists
+    shell: /opt/oracle/product/19.3.0/grid/deinstall/sshUserSetup.sh -user oracle -hosts "oracleprim oraclestdby" -noPromptPassphrase -confirm -advanced
+    register: sshUserSetup
+    become_user: oracle
+    failed_when: sshUserSetup.rc != 0
+
+  - name: Check if response file exists
+    stat:
+      path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+    register: rsp_file
+    become_user: oracle
+
+  - name: Take backup of response file if it exists
+    command: cp -prf /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp.bkp
+    when: rsp_file.stat.exists
+    become_user: oracle
+
+  - name: Modify response file
+    lineinfile:
+      path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: '^INVENTORY_LOCATION=', line: 'INVENTORY_LOCATION=/opt/oracle/oraInventory' }
+      - { regexp: '^oracle.install.option=', line: 'oracle.install.option=HA_CONFIG' }
+      - { regexp: '^ORACLE_BASE=', line: 'ORACLE_BASE=/opt/oracle' }
+      - { regexp: '^oracle.install.asm.OSDBA=', line: 'oracle.install.asm.OSDBA=oinstall' }
+      - { regexp: '^oracle.install.asm.OSOPER=', line: 'oracle.install.asm.OSOPER=oinstall' }
+      - { regexp: '^oracle.install.asm.OSASM=', line: 'oracle.install.asm.OSASM=oinstall' }
+      - { regexp: '^oracle.install.crs.config.scanType=', line: 'oracle.install.crs.config.scanType=LOCAL_SCAN' }
+      - { regexp: '^oracle.install.crs.config.ClusterConfiguration=', line: 'oracle.install.crs.config.ClusterConfiguration=STANDALONE' }
+    when: rsp_file.stat.exists
+    become_user: oracle
+
+  - block:
+      - name: Check if Oracle user's home directory exists
+        stat:
+          path: "/home/oracle"
+        register: oracle_home_stat
+
+      - name: Create Oracle user's home directory if it doesn't exist
+        file:
+          path: "/home/oracle"
+          state: directory
+        when: not oracle_home_stat.stat.exists
+
+      - name: Copy .bash_profile template to Oracle user's home directory
+        template:
+          src: "bash_profile.j2"
+          dest: "/home/oracle/.bash_profile"
+          owner: oracle
+          group: oinstall
+          mode: "0644"
+    become_user: oracle
+
+  - block:
+      - name: Copy grid_env template to Oracle user's home directory
+        template:
+          src: "grid_env.j2"
+          dest: "/home/oracle/grid_env"
+          owner: oracle
+          group: oinstall
+          mode: "0644"
+    become_user: oracle  
+  
+  - name: Source .bash_profile
+    shell: ". ~/.bash_profile && echo 'Success: .bash_profile sourced'"
+    register: bash_profile_result
+    changed_when: false
+    become_user: oracle
+
+  - name: Execute grid_env
+    shell: ". ~/grid_env && echo 'Success: grid_env executed'"
+    register: grid_env_result
+    changed_when: false
+    when: bash_profile_result.rc == 0
+    become_user: oracle
+
+  - name: Print results
+    debug:
+      msg: "{{ item.stdout }}"
+    loop:
+      - "{{ bash_profile_result }}"
+      - "{{ grid_env_result }}"  
+
+  - name: Run Cluster Verification Utility (CVU) as oracle user
+    shell: |
+      export CV_ASSUME_DISTID=RHEL8.0
+      /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg
+    become_user: oracle
+    register: cvu_output
+
+  - name: Check CVU output for errors
+    fail:
+      msg: "CVU check failed. Please review the output."
+    when: cvu_output.rc != 0
+
+  - name: Install Grid software
+    shell: |
+      /opt/oracle/product/19.3.0/grid/gridSetup.sh -silent -noconfig -ignorePrereqFailure -responseFile /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Execute oraInventory root script
+    shell: /opt/oracle/oraInventory/orainstRoot.sh
+    when: cvu_output.rc == 0
+
+  - name: Execute grid root script
+    shell: /opt/oracle/product/19.3.0/grid/root.sh
+    when: cvu_output.rc == 0
+
+  - name: Execute crs root script
+    shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
+    when: cvu_output.rc == 0
+
+  - name: Finish grid installations as oracle user
+    shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Check cluster installation status as oracle user
+    shell: /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Configure network as oracle user
+    shell: netca -silent -responseFile $ORACLE_HOME/network/install/netca_typ.rsp
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Enable and start ONS service as oracle user
+    shell: |
+      srvctl enable ons
+      srvctl start ons
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Modify resource attributes as oracle user
+    shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
+    become_user: oracle
+    when: cvu_output.rc == 0
+
+  - name: Stop and start HAS service as oracle user
+    shell: |
+      /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
+      /opt/oracle/product/19.3.0/grid/bin/crsctl start has
+    become_user: oracle
+    when: cvu_output.rc == 0    
+     
+  become: yes

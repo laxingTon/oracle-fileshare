@@ -1,5 +1,9 @@
 # vars.yml
+
 lv_extension_threshold: 30
+
+#Oracle Software Path
+source_oracle_software_location: /home/eppadmin/oracle-packages/
 
 disks:
   - name: /dev/sdc
