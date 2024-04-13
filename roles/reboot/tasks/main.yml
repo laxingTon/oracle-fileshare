@@ -1,0 +1,32 @@
+---
+# tasks file for reboot
+- block:
+    - name: Set SELINUX to disabled
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUX='
+        line: 'SELINUX=disabled'
+      register: sel_data  
+
+    - name: Stop firewall and disable SELinux
+      block:
+        - name: Stop firewalld
+          service:
+            name: firewalld
+            state: stopped      
+
+        - name: Reboot the system
+          shell: sleep 5 && init 6
+          async: 1 
+          poll: 0 
+
+        - name: Wait for SSH to become available
+          wait_for_connection:
+            delay: 60
+            timeout: 300
+      when: sel_data.changed == true
+
+    - name: Ping hosts after reboot
+      ping:
+  
+  become: yes     

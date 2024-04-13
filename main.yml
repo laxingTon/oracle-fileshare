@@ -6,4 +6,6 @@
   roles:
       - lvextend
       - partitions-mount
-      - swapspace  
+      - swapspace
+      - user-directory-setup
+      - reboot  

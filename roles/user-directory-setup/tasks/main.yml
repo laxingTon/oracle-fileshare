@@ -1,0 +1,68 @@
+---
+# tasks file for user-directory-setup
+#
+
+- block:
+    - name: Check if oinstall group exists
+      shell: getent group oinstall
+      register: oinstall_group
+      ignore_errors: true
+
+    - name: Create oinstall group if it doesn't exist
+      group:
+        name: oinstall
+        gid: 501
+      when: oinstall_group.rc != 0
+
+    - name: Check if dba group exists
+      shell: getent group dba
+      register: dba_group
+      ignore_errors: true
+
+    - name: Create dba group if it doesn't exist
+      group:
+        name: dba
+        gid: 502
+      when: dba_group.rc != 0
+
+    - name: Check if oracle user exists
+      shell: getent passwd oracle
+      register: oracle_user
+      ignore_errors: true
+
+    - name: Create oracle user if it doesn't exist
+      user:
+        name: oracle
+        uid: 501
+        group: oinstall
+        groups: dba
+      when: oracle_user.rc != 0
+
+    - name: Create Oracle Inventory Directory
+      file:
+        path: /opt/oracle/oraInventory
+        state: directory
+        owner: oracle
+        group: oinstall
+        mode: '0775'
+
+    - name: Create Oracle Grid Infrastructure Base and Home Directory
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: oracle
+        group: oinstall
+        mode: '0775'
+      loop:
+        - /opt/oracle/product/19.3.0/db
+        - /opt/oracle/product/19.3.0/grid  
+
+    - name: Create Oracle Software directory
+      file:
+        path: /opt/oracle/software
+        state: directory
+        owner: oracle
+        group: oinstall
+        mode: '0777' 
+
+  become: yes        
