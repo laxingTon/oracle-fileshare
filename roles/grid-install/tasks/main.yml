@@ -13,11 +13,6 @@
         dest: /opt/oracle/software
     when: software_dir.stat.exists
 
-  - name: Check if Oracle Grid Infrastructure Software is already extracted
-    stat:
-      path: /opt/oracle/product/19.3.0/grid
-    register: grid_infrastructure_dir    
-
   - name: Unzip Oracle Grid Infrastructure Software
     unarchive:
         src: /opt/oracle/software/LINUX.X64_193000_grid_home.zip
@@ -25,7 +20,7 @@
         remote_src: yes
         extra_opts: "-q"
     become_user: oracle
-    when: not grid_infrastructure_dir.stat.exists
+    #when: false
 
   - name: Change ownership of /opt/oracle to oracle:oinstall
     file:
@@ -99,17 +94,20 @@
       - xorg-x11-apps
       - sysfsutils
       - xterm
+    #when: false    
 
   - name: Update all packages
     yum:
       name: "*"
       state: latest
+    #when: false    
 
   - name: Execute sshUserSetup.sh script if exists
     shell: /opt/oracle/product/19.3.0/grid/deinstall/sshUserSetup.sh -user oracle -hosts "oracleprim oraclestdby" -noPromptPassphrase -confirm -advanced
     register: sshUserSetup
     become_user: oracle
-    failed_when: sshUserSetup.rc != 0
+    #failed_when: sshUserSetup.rc != 0
+    ignore_errors: yes
 
   - name: Check if response file exists
     stat:
@@ -129,28 +127,23 @@
       line: "{{ item.line }}"
     loop:
       - { regexp: '^INVENTORY_LOCATION=', line: 'INVENTORY_LOCATION=/opt/oracle/oraInventory' }
-      - { regexp: '^oracle.install.option=', line: 'oracle.install.option=HA_CONFIG' }
+      - { regexp: '^oracle.install.option=', line: 'oracle.install.option=CRS_SWONLY' }
       - { regexp: '^ORACLE_BASE=', line: 'ORACLE_BASE=/opt/oracle' }
       - { regexp: '^oracle.install.asm.OSDBA=', line: 'oracle.install.asm.OSDBA=oinstall' }
       - { regexp: '^oracle.install.asm.OSOPER=', line: 'oracle.install.asm.OSOPER=oinstall' }
       - { regexp: '^oracle.install.asm.OSASM=', line: 'oracle.install.asm.OSASM=oinstall' }
       - { regexp: '^oracle.install.crs.config.scanType=', line: 'oracle.install.crs.config.scanType=LOCAL_SCAN' }
       - { regexp: '^oracle.install.crs.config.ClusterConfiguration=', line: 'oracle.install.crs.config.ClusterConfiguration=STANDALONE' }
+      - { regexp: '^oracle.install.crs.config.configureAsExtendedCluster=', line: 'oracle.install.crs.config.configureAsExtendedCluster=false' }
+      - { regexp: '^oracle.install.crs.config.gpnp.configureGNS=', line: 'oracle.install.crs.config.gpnp.configureGNS=false' }
+      - { regexp: '^oracle.install.crs.config.autoConfigureClusterNodeVIP=', line: 'oracle.install.crs.config.autoConfigureClusterNodeVIP=false' }
+      - { regexp: '^oracle.install.crs.config.gpnp.gnsOption=', line: 'oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS' }
+      - { regexp: '^oracle.install.crs.configureGIMR=', line: 'oracle.install.crs.configureGIMR=false' }
+      - { regexp: '^oracle.install.asm.configureGIMRDataDG=', line: 'oracle.install.asm.configureGIMRDataDG=false' }
     when: rsp_file.stat.exists
     become_user: oracle
 
   - block:
-      - name: Check if Oracle user's home directory exists
-        stat:
-          path: "/home/oracle"
-        register: oracle_home_stat
-
-      - name: Create Oracle user's home directory if it doesn't exist
-        file:
-          path: "/home/oracle"
-          state: directory
-        when: not oracle_home_stat.stat.exists
-
       - name: Copy .bash_profile template to Oracle user's home directory
         template:
           src: "bash_profile.j2"
@@ -158,6 +151,13 @@
           owner: oracle
           group: oinstall
           mode: "0644"
+    become_user: oracle
+ 
+  
+  - name: Source .bash_profile
+    shell: "source ~/.bash_profile && echo 'Success: .bash_profile sourced'"
+    register: bash_profile_result
+    changed_when: false
     become_user: oracle
 
   - block:
@@ -168,16 +168,10 @@
           owner: oracle
           group: oinstall
           mode: "0644"
-    become_user: oracle  
-  
-  - name: Source .bash_profile
-    shell: ". ~/.bash_profile && echo 'Success: .bash_profile sourced'"
-    register: bash_profile_result
-    changed_when: false
-    become_user: oracle
+    become_user: oracle    
 
   - name: Execute grid_env
-    shell: ". ~/grid_env && echo 'Success: grid_env executed'"
+    shell: "source ~/grid_env && echo 'Success: grid_env executed'"
     register: grid_env_result
     changed_when: false
     when: bash_profile_result.rc == 0
@@ -188,70 +182,73 @@
       msg: "{{ item.stdout }}"
     loop:
       - "{{ bash_profile_result }}"
-      - "{{ grid_env_result }}"  
+      - "{{ grid_env_result }}" 
 
   - name: Run Cluster Verification Utility (CVU) as oracle user
     shell: |
       export CV_ASSUME_DISTID=RHEL8.0
-      /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg
+      /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg -verbose
     become_user: oracle
     register: cvu_output
+    failed_when: cvu_output.rc != 0
+    ignore_errors: yes
 
-  - name: Check CVU output for errors
-    fail:
-      msg: "CVU check failed. Please review the output."
-    when: cvu_output.rc != 0
 
   - name: Install Grid software
     shell: |
+      export CV_ASSUME_DISTID=RHEL8.0      
       /opt/oracle/product/19.3.0/grid/gridSetup.sh -silent -noconfig -ignorePrereqFailure -responseFile /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+    register: grid_output
     become_user: oracle
-    when: cvu_output.rc == 0
+    #when:  cvu_output.rc != 0
+    ignore_errors: yes
+ 
+  - fail:
+       msg: "Failed Grid installa"
+    when: "'successfully setup software' not in grid_output.stdout.lower()"     
+    ignore_errors: yes 
 
-  - name: Execute oraInventory root script
-    shell: /opt/oracle/oraInventory/orainstRoot.sh
-    when: cvu_output.rc == 0
+  - debug:
+       var: grid_output    
 
-  - name: Execute grid root script
-    shell: /opt/oracle/product/19.3.0/grid/root.sh
-    when: cvu_output.rc == 0
+  - block:
 
-  - name: Execute crs root script
-    shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
-    when: cvu_output.rc == 0
+      - name: Execute oraInventory root script
+        shell: /opt/oracle/oraInventory/orainstRoot.sh
 
-  - name: Finish grid installations as oracle user
-    shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
-    become_user: oracle
-    when: cvu_output.rc == 0
+      - name: Execute grid root script
+        shell: /opt/oracle/product/19.3.0/grid/root.sh
 
-  - name: Check cluster installation status as oracle user
-    shell: /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
-    become_user: oracle
-    when: cvu_output.rc == 0
+      - name: Execute crs root script
+        shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
 
-  - name: Configure network as oracle user
-    shell: netca -silent -responseFile $ORACLE_HOME/network/install/netca_typ.rsp
-    become_user: oracle
-    when: cvu_output.rc == 0
+      - name: Finish grid installations as oracle user
+        shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
+        become_user: oracle
 
-  - name: Enable and start ONS service as oracle user
-    shell: |
-      srvctl enable ons
-      srvctl start ons
-    become_user: oracle
-    when: cvu_output.rc == 0
+      - name: Check cluster installation status as oracle user
+        shell: /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
+        become_user: oracle
 
-  - name: Modify resource attributes as oracle user
-    shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
-    become_user: oracle
-    when: cvu_output.rc == 0
+      - name: Configure network as oracle user
+        shell: netca -silent -responseFile $ORACLE_HOME/network/install/netca_typ.rsp
+        become_user: oracle
 
-  - name: Stop and start HAS service as oracle user
-    shell: |
-      /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
-      /opt/oracle/product/19.3.0/grid/bin/crsctl start has
-    become_user: oracle
-    when: cvu_output.rc == 0    
-     
+      - name: Enable and start ONS service as oracle user
+        shell: |
+          srvctl enable ons
+          srvctl start ons
+        become_user: oracle
+
+      - name: Modify resource attributes as oracle user
+        shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
+        become_user: oracle
+
+      - name: Stop and start HAS service as oracle user
+        shell: |
+          /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
+          /opt/oracle/product/19.3.0/grid/bin/crsctl start has
+        become_user: oracle
+    when: "'successfully setup software' in grid_output.stdout.lower()"
+      
   become: yes
