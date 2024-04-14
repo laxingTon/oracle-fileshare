@@ -2,106 +2,6 @@
 # tasks file for grid-install
 #
 - block:
-  - name: Ensure software directory exists
-    stat:
-      path: /opt/oracle/software
-    register: software_dir
-
-  - name: Copy file using rsync
-    synchronize:
-        src: "{{ source_oracle_software_location }}"
-        dest: /opt/oracle/software
-    when: software_dir.stat.exists
-
-  - name: Unzip Oracle Grid Infrastructure Software
-    unarchive:
-        src: /opt/oracle/software/LINUX.X64_193000_grid_home.zip
-        dest: /opt/oracle/product/19.3.0/grid
-        remote_src: yes
-        extra_opts: "-q"
-    become_user: oracle
-    #when: false
-
-  - name: Change ownership of /opt/oracle to oracle:oinstall
-    file:
-      path: /opt/oracle
-      owner: oracle
-      group: oinstall
-      recurse: yes
-      state: directory
-   
-
-  - name: Check if oracle-database-preinstall-19c is installed
-    command: rpm -q i oracle-database-preinstall
-    register: oracle_database_preinstall_installed
-    changed_when: false
-    failed_when: false
-
-  - name: Install oracle-database-preinstall-19c
-    yum:
-      name: /opt/oracle/software/oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm
-      state: present
-    when: oracle_database_preinstall_installed.rc != 0
-
-
-  - name: Check if cvuqdisk is installed
-    command: rpm -q cvuqdisk
-    register: cvuqdisk_installed
-    changed_when: false
-    failed_when: false
-
-  - name: Install cvuqdisk
-    yum:
-      name: /opt/oracle/product/19.3.0/grid/cv/rpm/cvuqdisk-1.0.10-1.rpm
-      state: present
-    when: cvuqdisk_installed.rc != 0 
-
-  - name: Install required packages
-    yum:
-      name: "{{ item }}"
-      state: present
-    loop:
-      - bc
-      - binutils
-      - elfutils-libelf
-      #- elfutils-libelf-devel
-      #- fontconfig-devel
-      - glibc
-      - glibc-devel
-      - ksh
-      - libaio
-      - libaio-devel
-      - libXrender
-      - libXrender-devel
-      - libX11
-      - libXau
-      - libXi
-      - libXtst
-      - libgcc
-      - librdmacm-devel
-      - libstdc++
-      - libstdc++-devel
-      - libxcb
-      - make
-      - smartmontools
-      - sysstat
-      - libnsl
-      - libnsl.i686
-      - libnsl2
-      - libnsl2.i686
-      - xorg-x11-server-Xorg
-      - xorg-x11-xauth
-      - xorg-x11-apps
-      - sysfsutils
-      - xterm
-    #when: false    
-
-  - name: Update all packages
-    yum:
-      name: "*"
-      state: latest
-    #when: false    
-
   - name: Execute sshUserSetup.sh script if exists
     shell: /opt/oracle/product/19.3.0/grid/deinstall/sshUserSetup.sh -user oracle -hosts "oracleprim oraclestdby" -noPromptPassphrase -confirm -advanced
     register: sshUserSetup
@@ -190,7 +90,7 @@
       /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg -verbose
     become_user: oracle
     register: cvu_output
-    failed_when: cvu_output.rc != 0
+    #failed_when: cvu_output.rc == 0
     ignore_errors: yes
 
 

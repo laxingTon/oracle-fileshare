@@ -4,9 +4,10 @@
   vars_files:
     - vars.yml  
   roles:
-      - lvextend
-      - partitions-mount
-      - swapspace
-      - user-directory-setup
-      - reboot
-      - grid-install  
+      #- lvextend
+      #- partitions-mount
+      #- swapspace
+      #- user-directory-setup
+      #- reboot
+      - pre-req-grid  
+      #- grid-install  

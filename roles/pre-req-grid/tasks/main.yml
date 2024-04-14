@@ -1,0 +1,113 @@
+---
+# tasks file for pre-req-grid
+- name: Check if marker exists in file
+  shell: "grep -i 'successful task execution for grid' /tmp/grid_prereq_status.txt"
+  register: marker_check
+  ignore_errors: yes
+
+- block:
+  - name: Ensure software directory exists
+    stat:
+      path: /opt/oracle/software
+    register: software_dir
+
+  - name: Copy file using rsync
+    synchronize:
+        src: "{{ source_oracle_software_location }}"
+        dest: /opt/oracle/software
+    when: software_dir.stat.exists
+
+  - name: Unzip Oracle Grid Infrastructure Software
+    unarchive:
+        src: /opt/oracle/software/LINUX.X64_193000_grid_home.zip
+        dest: /opt/oracle/product/19.3.0/grid
+        remote_src: yes
+        extra_opts: "-q"
+    become_user: oracle
+
+  - name: Change ownership of /opt/oracle to oracle:oinstall
+    file:
+      path: /opt/oracle
+      owner: oracle
+      group: oinstall
+      recurse: yes
+      state: directory
+
+
+  - name: Check if oracle-database-preinstall-19c is installed
+    command: rpm -q i oracle-database-preinstall
+    register: oracle_database_preinstall_installed
+    changed_when: false
+    failed_when: false
+
+  - name: Install oracle-database-preinstall-19c
+    yum:
+      name: /opt/oracle/software/oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm
+      state: present
+    when: oracle_database_preinstall_installed.rc != 0
+
+
+  - name: Check if cvuqdisk is installed
+    command: rpm -q cvuqdisk
+    register: cvuqdisk_installed
+    changed_when: false
+    failed_when: false
+
+  - name: Install cvuqdisk
+    yum:
+      name: /opt/oracle/product/19.3.0/grid/cv/rpm/cvuqdisk-1.0.10-1.rpm
+      state: present
+    when: cvuqdisk_installed.rc != 0
+
+  - name: Install required packages
+    yum:
+      name: "{{ item }}"
+      state: present
+    loop:
+      - bc
+      - binutils
+      - elfutils-libelf
+      #- elfutils-libelf-devel
+      #- fontconfig-devel
+      - glibc
+      - glibc-devel
+      - ksh
+      - libaio
+      - libaio-devel
+      - libXrender
+      - libXrender-devel
+      - libX11
+      - libXau
+      - libXi
+      - libXtst
+      - libgcc
+      - librdmacm-devel
+      - libstdc++
+      - libstdc++-devel
+      - libxcb
+      - make
+      - smartmontools
+      - sysstat
+      - libnsl
+      - libnsl.i686
+      - libnsl2
+      - libnsl2.i686
+      - xorg-x11-server-Xorg
+      - xorg-x11-xauth
+      - xorg-x11-apps
+      - sysfsutils
+      - xterm
+
+  - name: Update all packages
+    yum:
+      name: "*"
+      state: latest
+
+  - name: Add marker to indicate successful task execution
+    lineinfile:
+      path: /tmp/grid_prereq_status.txt
+      line: "successful task execution for grid"
+      create: yes
+  
+  when: marker_check is changed and marker_check.rc != 0
+  become: yes

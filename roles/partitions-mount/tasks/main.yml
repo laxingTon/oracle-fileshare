@@ -22,6 +22,20 @@
       loop: "{{ disks }}"
       when: partition_check is failed
       #when: not partition_check.results[item].rc == 0
+ 
+    - name: Check if volume groups exist
+      shell: "vgs --noheadings | awk '{ print $1 }' | grep 'vg_{{ item.mount_point | replace('/', '_') }}$'"
+      loop: "{{ disks }}"
+      register: vg_check
+      changed_when: false
+
+    - name: Create volume groups
+      lvg:
+        vg: "vg_{{ item.mount_point | replace('/', '_') }}"
+        pvs: "{{ item.name }}1"
+      loop: "{{ disks }}"
+      when: vg_check is failed
+
 
     - name: Check if physical volumes exist
       shell: "pvs --noheadings | awk '{ print $1 }' | grep '{{ item.name}}1$'"
@@ -36,19 +50,6 @@
         pvs: "{{ item.name }}1"
       loop: "{{ disks }}"
       when: pv_check is failed
-
-    - name: Check if volume groups exist
-      shell: "vgs --noheadings | awk '{ print $1 }' | grep 'vg_{{ item.mount_point | replace('/', '_') }}$'"
-      loop: "{{ disks }}"
-      register: vg_check
-      changed_when: false
-
-    - name: Create volume groups
-      lvg:
-        vg: "vg_{{ item.mount_point | replace('/', '_') }}"
-        pvs: "{{ item.name }}1"
-      loop: "{{ disks }}"
-      when: vg_check is failed
 
     - name: Check if logical volumes exist
       shell: "lvs --noheadings | awk '{ print $1 }' | grep 'lv_{{ item.mount_point | replace('/', '_') }}$'"
