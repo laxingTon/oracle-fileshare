@@ -1,0 +1,58 @@
+---
+# tasks file for database-creation
+- block:
+
+  - name: Source .bash_profile
+    shell: "source ~/.bash_profile && echo 'Success: .bash_profile sourced'"
+    register: bash_profile_result
+    changed_when: false
+    become_user: oracle
+
+  - name: Print results
+    debug:
+      msg: "{{ item.stdout }}"
+    loop:
+      - "{{ bash_profile_result }}"
+
+  - name: Run dbca command to create Oracle database
+    shell: |
+      dbca -silent -createDatabase \
+      -gdbName TESTCDB2 \
+      -sid TESTCDB2 \
+      -responseFile NO_VALUE \
+      -databaseConfigType SI \
+      -dbOptions JSERVER:true,ORACLE_TEXT:false,IMEDIA:false,CWMLITE:false,SPATIAL:false,OMS:false,APEX:false,DV:false \
+      -createAsContainerDatabase true \
+      -numberOfPDBs 1 \
+      -pdbName TESTPDB02 \
+      -pdbAdminPassword E4CQmk3ps65N8xBc \
+      -databaseType MULTIPURPOSE \
+      -templateName New_Database.dbt \
+      -sysPassword gyoFm8AYHsvZm48A \
+      -systemPassword gyoFm8AYHsvZm48A \
+      -storageType ASM \
+      -diskGroupName +DATA \
+      -recoveryGroupName +RECO \
+      -redoLogFileSize 50 \
+      -useOMF true \
+      -totalMemory 4096 \
+      -characterSet AL32UTF8 \
+      -sampleSchema false \
+      -initParams "sga_target=1536MB,pga_aggregate_target=512MB,nls_language=ENGLISH,nls_territory='AMERICA',db_create_online_log_dest_1='+DATA',processes=300,open_cursors=300,db_recovery_file_dest_size=1GB" \
+      -automaticMemoryManagement false
+    become_user: oracle
+
+  - name: Run ps command to check for pmon processes
+    shell: "ps -ef | grep pmon"
+    register: pmon_processes
+    changed_when: false
+
+  - debug:
+      msg: "pmon processes: {{ pmon_processes.stdout }}"   
+
+  - name: Stop and start HAS service as oracle user
+    shell: |
+      /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
+    become_user: oracle       
+    
+  become: yes
