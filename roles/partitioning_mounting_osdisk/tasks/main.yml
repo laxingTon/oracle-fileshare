@@ -1,0 +1,80 @@
+---
+# tasks file for partitioning_mounting_osdisk
+- block:
+
+    - name: Check if logical volumes exist
+      shell: "lvs --noheadings | awk '{ print $1 }' | grep 'swaplv'"
+      register: lv_check_swap
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Create logical volume for swap
+      lvol:
+        vg: rootvg
+        lv: swaplv
+        size: 16G
+      register: lvcreate_swap_output
+      when: lv_check_swap is failed
+
+    - name: Format swap partition
+      command: mkswap /dev/rootvg/swaplv
+      when: lvcreate_swap_output.changed
+
+    - name: Add swap entry to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "/dev/mapper/rootvg-swaplv  swap     swap    defaults     0 0"
+      notify: Reload systemd
+      when: lvcreate_swap_output.changed
+
+    - name: Activate swap
+      command: swapon -v /dev/rootvg/swaplv
+      when: lvcreate_swap_output.changed
+
+    - name: Enable swap at boot
+      command: swapon -a
+      when: lvcreate_swap_output.changed
+
+    - name: Display current swap usage
+      command: cat /proc/swaps
+      when: lvcreate_swap_output.changed
+
+    - name: Check if logical volumes exist for opt
+      shell: "lvs --noheadings | awk '{ print $1 }' | grep 'optlv'"
+      register: lv_check_optlv
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Create logical volume for /opt
+      lvol:
+        vg: rootvg
+        lv: optlv
+        size: 150G
+      register: lvcreate_opt_output
+      when: lv_check_optlv is failed
+
+    - name: Format /opt partition
+      command: mkfs -t xfs /dev/rootvg/optlv
+      when: lvcreate_opt_output.changed
+
+    - name: Add /opt entry to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "/dev/mapper/rootvg-optlv       /opt    xfs     defaults        0       0"
+      notify: Reload systemd
+      when: lvcreate_opt_output.changed
+
+    - name: Mount /opt volume
+      mount:
+        src: "/dev/mapper/rootvg-optlv"
+        path: "/opt"
+        fstype: xfs
+        state: mounted
+      when: lvcreate_opt_output.changed
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+      when: lvcreate_opt_output.changed
+      ignore_errors: yes   
+  become: yes    

@@ -2,7 +2,7 @@
 # tasks file for partitions-mount
 - block:
     - name: Check if partitions exist
-      shell: "lsblk -n -o NAME | grep '^{{ item.name | basename }}$'"
+      shell: "lsblk -n -o NAME | grep '{{ item.name | basename }}1$'"
       loop: "{{ disks }}"
       register: partition_check
       changed_when: false
@@ -24,14 +24,15 @@
       #when: not partition_check.results[item].rc == 0
  
     - name: Check if volume groups exist
-      shell: "vgs --noheadings | awk '{ print $1 }' | grep 'vg_{{ item.mount_point | replace('/', '_') }}$'"
+      shell: "vgs --noheadings | awk '{ print $1 }' | grep 'vg_{{ item.mount_point | replace('/', '') }}$'"
       loop: "{{ disks }}"
       register: vg_check
       changed_when: false
+      ignore_errors: yes
 
     - name: Create volume groups
       lvg:
-        vg: "vg_{{ item.mount_point | replace('/', '_') }}"
+        vg: "vg_{{ item.mount_point | replace('/', '') }}"
         pvs: "{{ item.name }}1"
       loop: "{{ disks }}"
       when: vg_check is failed
@@ -46,13 +47,13 @@
 
     - name: Create physical volumes
       lvg:
-        vg: "vg_{{ item.mount_point | replace('/', '_') }}"
+        vg: "vg_{{ item.mount_point | replace('/', '') }}"
         pvs: "{{ item.name }}1"
       loop: "{{ disks }}"
       when: pv_check is failed
 
     - name: Check if logical volumes exist
-      shell: "lvs --noheadings | awk '{ print $1 }' | grep 'lv_{{ item.mount_point | replace('/', '_') }}$'"
+      shell: "lvs --noheadings | awk '{ print $1 }' | grep 'lv_{{ item.mount_point | replace('/', '') }}$'"
       loop: "{{ disks }}"
       register: lv_check
       changed_when: false
@@ -60,8 +61,8 @@
 
     - name: Create logical volumes
       lvol:
-        vg: "vg_{{ item.mount_point | replace('/', '_') }}"
-        lv: "lv_{{ item.mount_point | replace('/', '_') }}"
+        vg: "vg_{{ item.mount_point | replace('/', '') }}"
+        lv: "lv_{{ item.mount_point | replace('/', '') }}"
         size: 100%FREE
       loop: "{{ disks }}"
       when: lv_check is failed
@@ -69,14 +70,14 @@
     - name: Format logical volumes
       filesystem:
         fstype: xfs
-        dev: "/dev/vg_{{ item.mount_point | replace('/', '_') }}/lv_{{ item.mount_point | replace('/', '_') }}"
+        dev: "/dev/vg_{{ item.mount_point | replace('/', '') }}/lv_{{ item.mount_point | replace('/', '') }}"
       loop: "{{ disks }}"
       when: lv_check is failed
 
     - name: Add entries to /etc/fstab
       lineinfile:
         path: /etc/fstab
-        line: "/dev/mapper/vg_{{ item.mount_point | replace('/', '_') }}-lv_{{ item.mount_point | replace('/', '_') }}       {{ item.mount_point }}    xfs     defaults        0       0"
+        line: "/dev/mapper/vg_{{ item.mount_point | replace('/', '') }}-lv_{{ item.mount_point | replace('/', '') }}       {{ item.mount_point }}    xfs     defaults        0       0"
       loop: "{{ disks }}"
       when: lv_check is failed
 
@@ -95,7 +96,7 @@
     - name: Mount the volumes
       mount:
         path: "{{ item.mount_point }}"
-        src: "/dev/mapper/vg_{{ item.mount_point | replace('/', '_') }}-lv_{{ item.mount_point | replace('/', '_') }}"
+        src: "/dev/mapper/vg_{{ item.mount_point | replace('/', '') }}-lv_{{ item.mount_point | replace('/', '') }}"
         fstype: xfs
         state: mounted
       loop: "{{ disks }}"

@@ -1,154 +1,169 @@
----
 # tasks file for grid-install
-#
 - block:
-  - name: Execute sshUserSetup.sh script if exists
-    shell: /opt/oracle/product/19.3.0/grid/deinstall/sshUserSetup.sh -user oracle -hosts "oracleprim oraclestdby" -noPromptPassphrase -confirm -advanced
-    register: sshUserSetup
-    become_user: oracle
-    #failed_when: sshUserSetup.rc != 0
-    ignore_errors: yes
+  - block:
+    - name: Execute sshUserSetup.sh script if exists
+      shell: /opt/oracle/product/19.3.0/grid/deinstall/sshUserSetup.sh -user oracle -hosts "oracleprim oraclestdby" -noPromptPassphrase -confirm -advanced
+      register: sshUserSetup
+      #failed_when: sshUserSetup.rc != 0
+      ignore_errors: yes
 
-  - name: Check if response file exists
-    stat:
-      path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
-    register: rsp_file
-    become_user: oracle
+    - name: Check if response file exists
+      stat:
+        path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+      register: rsp_file
 
-  - name: Take backup of response file if it exists
-    command: cp -prf /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp.bkp
-    when: rsp_file.stat.exists
-    become_user: oracle
+    - name: Take backup of response file if it exists
+      command: cp -prf /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp.bkp
+      when: rsp_file.stat.exists
 
-  - name: Modify response file
-    lineinfile:
-      path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
-      regexp: "{{ item.regexp }}"
-      line: "{{ item.line }}"
-    loop:
-      - { regexp: '^INVENTORY_LOCATION=', line: 'INVENTORY_LOCATION=/opt/oracle/oraInventory' }
-      - { regexp: '^oracle.install.option=', line: 'oracle.install.option=CRS_SWONLY' }
-      - { regexp: '^ORACLE_BASE=', line: 'ORACLE_BASE=/opt/oracle' }
-      - { regexp: '^oracle.install.asm.OSDBA=', line: 'oracle.install.asm.OSDBA=oinstall' }
-      - { regexp: '^oracle.install.asm.OSOPER=', line: 'oracle.install.asm.OSOPER=oinstall' }
-      - { regexp: '^oracle.install.asm.OSASM=', line: 'oracle.install.asm.OSASM=oinstall' }
-      - { regexp: '^oracle.install.crs.config.scanType=', line: 'oracle.install.crs.config.scanType=LOCAL_SCAN' }
-      - { regexp: '^oracle.install.crs.config.ClusterConfiguration=', line: 'oracle.install.crs.config.ClusterConfiguration=STANDALONE' }
-      - { regexp: '^oracle.install.crs.config.configureAsExtendedCluster=', line: 'oracle.install.crs.config.configureAsExtendedCluster=false' }
-      - { regexp: '^oracle.install.crs.config.gpnp.configureGNS=', line: 'oracle.install.crs.config.gpnp.configureGNS=false' }
-      - { regexp: '^oracle.install.crs.config.autoConfigureClusterNodeVIP=', line: 'oracle.install.crs.config.autoConfigureClusterNodeVIP=false' }
-      - { regexp: '^oracle.install.crs.config.gpnp.gnsOption=', line: 'oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS' }
-      - { regexp: '^oracle.install.crs.configureGIMR=', line: 'oracle.install.crs.configureGIMR=false' }
-      - { regexp: '^oracle.install.asm.configureGIMRDataDG=', line: 'oracle.install.asm.configureGIMRDataDG=false' }
-    when: rsp_file.stat.exists
-    become_user: oracle
+    - name: Modify response file
+      lineinfile:
+        path: /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^INVENTORY_LOCATION=', line: 'INVENTORY_LOCATION=/opt/oracle/oraInventory' }
+        - { regexp: '^oracle.install.option=', line: 'oracle.install.option=CRS_SWONLY' }
+        - { regexp: '^ORACLE_BASE=', line: 'ORACLE_BASE=/opt/oracle' }
+        - { regexp: '^oracle.install.asm.OSDBA=', line: 'oracle.install.asm.OSDBA=oinstall' }
+        - { regexp: '^oracle.install.asm.OSOPER=', line: 'oracle.install.asm.OSOPER=oinstall' }
+        - { regexp: '^oracle.install.asm.OSASM=', line: 'oracle.install.asm.OSASM=oinstall' }
+        - { regexp: '^oracle.install.crs.config.scanType=', line: 'oracle.install.crs.config.scanType=LOCAL_SCAN' }
+        - { regexp: '^oracle.install.crs.config.ClusterConfiguration=', line: 'oracle.install.crs.config.ClusterConfiguration=STANDALONE' }
+        - { regexp: '^oracle.install.crs.config.configureAsExtendedCluster=', line: 'oracle.install.crs.config.configureAsExtendedCluster=false' }
+        - { regexp: '^oracle.install.crs.config.gpnp.configureGNS=', line: 'oracle.install.crs.config.gpnp.configureGNS=false' }
+        - { regexp: '^oracle.install.crs.config.autoConfigureClusterNodeVIP=', line: 'oracle.install.crs.config.autoConfigureClusterNodeVIP=false' }
+        - { regexp: '^oracle.install.crs.config.gpnp.gnsOption=', line: 'oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS' }
+        - { regexp: '^oracle.install.crs.configureGIMR=', line: 'oracle.install.crs.configureGIMR=false' }
+        - { regexp: '^oracle.install.asm.configureGIMRDataDG=', line: 'oracle.install.asm.configureGIMRDataDG=false' }
+      when: rsp_file.stat.exists
+
+    - name: Copy .bash_profile template to Oracle user's home directory
+      template:
+        src: "bash_profile.j2"
+        dest: "/home/oracle/.bash_profile"
+        owner: oracle
+        group: oinstall
+        mode: "0644"
+
+
+    - name: Source .bash_profile
+      shell: "source ~/.bash_profile && echo 'Success: .bash_profile sourced'"
+      register: bash_profile_result
+      changed_when: false
+
+    - name: Copy grid_env template to Oracle user's home directory
+      template:
+        src: "grid_env.j2"
+        dest: "/home/oracle/grid_env"
+        owner: oracle
+        group: oinstall
+        mode: "0644"
+
+    - name: Execute grid_env
+      shell: "source ~/grid_env && echo 'Success: grid_env executed'"
+      register: grid_env_result
+      changed_when: false
+      when: bash_profile_result.rc == 0
+
+    - name: Print results
+      debug:
+        msg: "{{ item.stdout }}"
+      loop:
+        - "{{ bash_profile_result }}"
+        - "{{ grid_env_result }}"
+
+    - name: Run Cluster Verification Utility (CVU) as oracle user
+      shell: |
+        export CV_ASSUME_DISTID=RHEL8.0
+        /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg -verbose
+      register: cvu_output
+      #failed_when: cvu_output.rc == 0
+      ignore_errors: yes
+    become_user: oracle 
+
+  - name: Check if grid installation exists in file
+    shell: "grep -i 'successful install execution for grid' /tmp/grid_status.txt"
+    register: grid_install_check
+    ignore_errors: yes   
 
   - block:
-      - name: Copy .bash_profile template to Oracle user's home directory
-        template:
-          src: "bash_profile.j2"
-          dest: "/home/oracle/.bash_profile"
-          owner: oracle
-          group: oinstall
-          mode: "0644"
-    become_user: oracle
- 
-  
-  - name: Source .bash_profile
-    shell: "source ~/.bash_profile && echo 'Success: .bash_profile sourced'"
-    register: bash_profile_result
-    changed_when: false
-    become_user: oracle
+    - name: Install Grid software
+      shell: |
+        export CV_ASSUME_DISTID=RHEL8.0
+        /opt/oracle/product/19.3.0/grid/gridSetup.sh -silent -noconfig -ignorePrereqFailure -responseFile /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
+      register: grid_output
+      become_user: oracle
+      #when:  cvu_output.rc != 0
+      ignore_errors: yes
 
-  - block:
-      - name: Copy grid_env template to Oracle user's home directory
-        template:
-          src: "grid_env.j2"
-          dest: "/home/oracle/grid_env"
-          owner: oracle
-          group: oinstall
-          mode: "0644"
-    become_user: oracle    
+    - name: Add marker to indicate successful grid install execution
+      lineinfile:
+        path: /tmp/grid_status.txt
+        line: "successful install execution for grid"
+        create: yes
+      when: "'successfully setup software' in grid_output.stdout.lower()"  
 
-  - name: Execute grid_env
-    shell: "source ~/grid_env && echo 'Success: grid_env executed'"
-    register: grid_env_result
-    changed_when: false
-    when: bash_profile_result.rc == 0
-    become_user: oracle
+    - debug:
+        var: grid_output
+        
+    when: grid_install_check is changed and grid_install_check.rc != 0   
 
-  - name: Print results
-    debug:
-      msg: "{{ item.stdout }}"
-    loop:
-      - "{{ bash_profile_result }}"
-      - "{{ grid_env_result }}" 
+    #- name: Execute oraInventory root script
+    #shell: /opt/oracle/oraInventory/orainstRoot.sh
+    #register: ora_inst_root
 
-  - name: Run Cluster Verification Utility (CVU) as oracle user
+    #- debug:
+    #      var: ora_inst_root    
+    #- name: Execute grid root script
+    #shell: /opt/oracle/product/19.3.0/grid/root.sh
+    #register: root_script
+
+    #- debug:
+    #  var: root_script       
+    #- name: Execute crs root script
+    #shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
+    #register: has_root   
+    # - debug:
+    #   var: has_root   
+    #- name: Finish grid installations as oracle user
+    #shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
+    #become_user: oracle
+    #register: updatenode_list
+
+    #- debug:
+    #      var: updatenode_list    
+    #- name: Configure network as oracle user
+    #shell: /opt/oracle/product/19.3.0/grid/bin/netca -silent -responseFile /opt/oracle/product/19.3.0/grid/network/install/netca_typ.rsp
+    #become_user: oracle
+    #register: netca_response
+
+    #- debug:
+    #      var: netca_response
+    #- name: Modify resource attributes as oracle user
+    #shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
+    #become_user: oracle
+    #register: ora_cssd
+
+    #- debug:
+    #   var: ora_cssd    
+  - name: Check cluster installation status as oracle user
+    shell: /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
+    register: crs_status  
+  - debug:
+          var: crs_status   
+
+  - name: Stop and start HAS service as oracle user
     shell: |
-      export CV_ASSUME_DISTID=RHEL8.0
-      /opt/oracle/product/19.3.0/grid/runcluvfy.sh stage -pre hacfg -verbose
-    become_user: oracle
-    register: cvu_output
-    #failed_when: cvu_output.rc == 0
-    ignore_errors: yes
-
-
-  - name: Install Grid software
-    shell: |
-      export CV_ASSUME_DISTID=RHEL8.0      
-      /opt/oracle/product/19.3.0/grid/gridSetup.sh -silent -noconfig -ignorePrereqFailure -responseFile /opt/oracle/product/19.3.0/grid/install/response/gridsetup.rsp
-    register: grid_output
-    become_user: oracle
-    #when:  cvu_output.rc != 0
-    ignore_errors: yes
- 
-  - fail:
-       msg: "Failed Grid installa"
-    when: "'successfully setup software' not in grid_output.stdout.lower()"     
-    ignore_errors: yes 
+       /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
+       /opt/oracle/product/19.3.0/grid/bin/crsctl start has
+       /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
+    register: stop_start_grid
 
   - debug:
-       var: grid_output    
+          var: stop_start_grid   
 
-  - block:
 
-      - name: Execute oraInventory root script
-        shell: /opt/oracle/oraInventory/orainstRoot.sh
+    
 
-      - name: Execute grid root script
-        shell: /opt/oracle/product/19.3.0/grid/root.sh
-
-      - name: Execute crs root script
-        shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
-
-      - name: Finish grid installations as oracle user
-        shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
-        become_user: oracle
-
-      - name: Check cluster installation status as oracle user
-        shell: /opt/oracle/product/19.3.0/grid/bin/crsctl stat res -init -t
-        become_user: oracle
-
-      - name: Configure network as oracle user
-        shell: netca -silent -responseFile $ORACLE_HOME/network/install/netca_typ.rsp
-        become_user: oracle
-
-      - name: Enable and start ONS service as oracle user
-        shell: |
-          srvctl enable ons
-          srvctl start ons
-        become_user: oracle
-
-      - name: Modify resource attributes as oracle user
-        shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
-        become_user: oracle
-
-      - name: Stop and start HAS service as oracle user
-        shell: |
-          /opt/oracle/product/19.3.0/grid/bin/crsctl stop has
-          /opt/oracle/product/19.3.0/grid/bin/crsctl start has
-        become_user: oracle
-    when: "'successfully setup software' in grid_output.stdout.lower()"
-      
   become: yes

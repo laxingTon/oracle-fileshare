@@ -1,9 +1,16 @@
 # vars.yml
 
-lv_extension_threshold: 30
+#lv_extension_threshold: 30
+#
+lv_extension_threshold:
+  - { lvpath: "rootlv", resize: 8 }
+  - { lvpath: "homelv", resize: 5 }
+  - { lvpath: "tmplv", resize: 5 }  
+  - { lvpath: "varlv", resize: 10 }  
 
 #Oracle Software Path
 source_oracle_software_location: /home/eppadmin/oracle-packages/
+
 
 disks:
   - name: /dev/sdc
@@ -18,5 +25,5 @@ disks:
   #mount_point: /tmptsb
   #
  
-oracle_swapspace: 1
+oracle_swapspace: 8
     

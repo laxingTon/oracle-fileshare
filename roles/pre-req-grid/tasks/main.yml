@@ -1,8 +1,8 @@
 ---
 # tasks file for pre-req-grid
-- name: Check if marker exists in file
-  shell: "grep -i 'successful task execution for grid' /tmp/grid_prereq_status.txt"
-  register: marker_check
+- name: Check if marker for successful grid packages exists in file
+  shell: "grep -i 'successful packages execution for grid' /tmp/grid_status.txt"
+  register: grid_packages_check
   ignore_errors: yes
 
 - block:
@@ -103,11 +103,11 @@
       name: "*"
       state: latest
 
-  - name: Add marker to indicate successful task execution
+  - name: Add marker to indicate successful packages execution for grid
     lineinfile:
-      path: /tmp/grid_prereq_status.txt
-      line: "successful task execution for grid"
+      path: /tmp/grid_status.txt
+      line: "successful packages execution for grid"
       create: yes
   
-  when: marker_check is changed and marker_check.rc != 0
   become: yes
+  when: grid_packages_check is changed and grid_packages_check.rc != 0
