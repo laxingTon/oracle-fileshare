@@ -128,21 +128,21 @@
 
       - debug:
           var: ora_inst_root 
-        when: ora_inst_root.rc == 0     
+        when: ora_inst_root is changed and ora_inst_root.rc == 0     
 
       - name: Add marker to indicate successful execution for orainstroot
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for orainstroot"
           create: yes    
-        when: ora_inst_root.rc == 0      
+        when: ora_inst_root is changed and ora_inst_root.rc == 0    
 
 
       - name: Check if successful execution for gridrootscript exists in file
         shell: "grep -i 'successful execution for gridrootscript' /tmp/oracle_status.txt"
         register: gridrootscript_output
         ignore_errors: yes
-        when: ora_inst_root.rc == 0                 
+        when: ora_inst_root is changed and ora_inst_root.rc == 0              
 
       - name: Execute grid root script
         shell: /opt/oracle/product/19.3.0/grid/root.sh
@@ -151,20 +151,20 @@
 
       - debug:
           var: root_script
-        when: root_script.rc == 0
+        when: root_script is changed and root_script.rc == 0
 
       - name: Add marker to indicate successful execution for gridrootscript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for gridrootscript"
           create: yes    
-        when: root_script.rc == 0          
+        when: root_script is changed and root_script.rc == 0        
 
       - name: Check if successful execution for crsrootscript exists in file
         shell: "grep -i 'successful execution for crsrootscript' /tmp/oracle_status.txt"
         register: crsrootscript_output
         ignore_errors: yes
-        when: root_script.rc == 0      
+        when: root_script is changed and root_script.rc == 0      
 
       - name: Execute crs root script
         shell: /opt/oracle/product/19.3.0/grid/crs/install/roothas.sh
@@ -173,21 +173,21 @@
 
       - debug:
           var: has_root
-        when: has_root.rc == 0  
+        when: has_root is changes and has_has_root.rc == 0  
 
       - name: Add marker to indicate successful execution for crsrootscript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for crsrootscript"
           create: yes    
-        when: has_root.rc == 0
+        when: has_root is changes and has_has_root.rc == 0
 
 
       - name: Check if successful execution for runinstallerscript exists in file
         shell: "grep -i 'successful execution for runinstallerscript' /tmp/oracle_status.txt"
         register: runinstallerscript_output
         ignore_errors: yes
-        when: has_root.rc == 0  
+        when: has_root is changes and has_has_root.rc == 0
 
       - name: Finish grid installations as oracle user
         shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
@@ -197,21 +197,21 @@
 
       - debug:
           var: updatenode_list
-        when: updatenode_list.rc == 0       
+        when: updatenode_list is changed and updatenode_list.rc == 0       
 
       - name: Add marker to indicate successful execution for runinstallerscript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for runinstallerscript"
           create: yes    
-        when: updatenode_list.rc == 0            
+        when: updatenode_list is changed and updatenode_list.rc == 0         
             
 
       - name: Check if successful execution for netcascript exists in file
         shell: "grep -i 'successful execution for netcascript' /tmp/oracle_status.txt"
         register: netcascript_output
         ignore_errors: yes
-        when: updatenode_list.rc == 0   
+        when: updatenode_list is changed and updatenode_list.rc == 0   
 
       - name: Configure network as oracle user
         shell: /opt/oracle/product/19.3.0/grid/bin/netca -silent -responseFile /opt/oracle/product/19.3.0/grid/network/install/netca_typ.rsp
@@ -221,20 +221,20 @@
 
       - debug:
           var: netca_response
-        when: netca_response.rc == 0  
+        when: netca_response is changed and netca_response.rc == 0  
 
       - name: Add marker to indicate successful execution for netcascript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for netcascript"
           create: yes    
-        when: netca_response.rc == 0     
+        when: netca_response is changed and netca_response.rc == 0       
 
       - name: Check if successful execution for crsctlscript exists in file
         shell: "grep -i 'successful execution for crsctlscript' /tmp/oracle_status.txt"
         register: crsctlscript_output
         ignore_errors: yes
-        when: netca_response.rc == 0  
+        when: netca_response is changed and netca_response.rc == 0    
 
       - name: Modify resource attributes as oracle user
         shell: /opt/oracle/product/19.3.0/grid/bin/crsctl modify resource "ora.cssd" -attr "AUTO_START=1" -unsupported
@@ -244,14 +244,14 @@
 
       - debug:
           var: ora_cssd 
-        when: ora_cssd.rc == 0     
+        when: ora_cssd is changed and ora_cssd.rc == 0     
 
       - name: Add marker to indicate successful execution for crsctlscript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for crsctlscript"
           create: yes    
-        when: ora_cssd.rc == 0  
+        when: ora_cssd is changed and ora_cssd.rc == 0   
 
       - block:
           - name: Check cluster installation status as oracle user
