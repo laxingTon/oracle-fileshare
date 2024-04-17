@@ -1,7 +1,5 @@
 # vars.yml
 
-#lv_extension_threshold: 30
-#
 lv_extension_threshold:
   - { lvpath: "rootlv", resize: 8 }
   - { lvpath: "homelv", resize: 5 }
@@ -23,7 +21,7 @@ disks:
     mount_point: /archive
   #- name: /dev/sdg
   #mount_point: /tmptsb
-  #
+  
  
 oracle_swapspace: 8
     

@@ -1,7 +1,7 @@
 ---
 # tasks file for pre-req-grid
 - name: Check if marker for successful grid packages exists in file
-  shell: "grep -i 'successful packages execution for grid' /tmp/grid_status.txt"
+  shell: "grep -i 'successful packages execution for grid' /tmp/oracle_status.txt"
   register: grid_packages_check
   ignore_errors: yes
 
@@ -105,7 +105,7 @@
 
   - name: Add marker to indicate successful packages execution for grid
     lineinfile:
-      path: /tmp/grid_status.txt
+      path: /tmp/oracle_status.txt
       line: "successful packages execution for grid"
       create: yes
   
