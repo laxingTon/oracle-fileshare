@@ -173,21 +173,21 @@
 
       - debug:
           var: has_root
-        when: has_root is changes and has_has_root.rc == 0  
+        when: has_root is changed and has_root.rc == 0 
 
       - name: Add marker to indicate successful execution for crsrootscript
         lineinfile:
           path: /tmp/oracle_status.txt
           line: "successful execution for crsrootscript"
           create: yes    
-        when: has_root is changes and has_has_root.rc == 0
+        when: has_root is changed and has_root.rc == 0
 
 
       - name: Check if successful execution for runinstallerscript exists in file
         shell: "grep -i 'successful execution for runinstallerscript' /tmp/oracle_status.txt"
         register: runinstallerscript_output
         ignore_errors: yes
-        when: has_root is changes and has_has_root.rc == 0
+        when: has_root is changed and has_root.rc == 0
 
       - name: Finish grid installations as oracle user
         shell: /opt/oracle/product/19.3.0/grid/oui/bin/runInstaller -updateNodeList ORACLE_HOME=/opt/oracle/product/19.3.0/grid -defaultHomeName CLUSTER_NODES=CRS=TRUE
