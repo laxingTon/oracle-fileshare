@@ -1,6 +1,9 @@
 ---
 # tasks file for user-directory-setup
-#
+- name: Check if marker for successful execution of user-directory setup exists in file
+  shell: "grep -i 'successful user directory setup execution' /tmp/oracle_status.txt"
+  register: userdir_status
+  ignore_errors: yes
 
 - block:
     - name: Check if oinstall group exists
@@ -71,6 +74,13 @@
         state: directory
         owner: oracle
         group: oinstall
-        mode: '0777' 
+        mode: '0777'
 
-  become: yes        
+    - name: Add marker to indicate successful of user-directory execution 
+      lineinfile:
+        path: /tmp/oracle_status.txt
+        line: "successful user directory setup execution"
+        create: yes        
+
+  become: yes
+  when: userdir_status is changed and userdir_status.rc != 0   

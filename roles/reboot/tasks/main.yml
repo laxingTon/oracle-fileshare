@@ -1,5 +1,10 @@
 ---
 # tasks file for reboot
+- name: Check if marker for successful reboot exists in file
+  shell: "grep -i 'successful reboot execution' /tmp/oracle_status.txt"
+  register: reboot_status
+  ignore_errors: yes
+
 - block:
     - name: Set SELINUX to disabled
       lineinfile:
@@ -28,5 +33,12 @@
 
     - name: Ping hosts after reboot
       ping:
+
+    - name: Add marker to indicate successful reboot execution
+      lineinfile:
+        path: /tmp/oracle_status.txt
+        line: "successful reboot execution"
+        create: yes              
   
-  become: yes     
+  become: yes
+  when: reboot_status is changed and reboot_status.rc != 0  

@@ -1,6 +1,11 @@
 ---
 # tasks file for volume_operations
 #
+- name: Check if marker for successful grow-pvresize exists in file
+  shell: "grep -i 'successful grow-pvresize execution' /tmp/oracle_status.txt"
+  register: grow_pvresize_status
+  ignore_errors: yes
+
 - block:
     - name: Run vgdisplay command
       shell: vgdisplay rootvg
@@ -46,4 +51,12 @@
       debug:
         var: pvscan_after_resize.stdout_lines
       when: "pvscan_after_resize.changed"
-  become: yes    
+
+    - name: Add marker to indicate successful of grow-pvresize execution 
+      lineinfile:
+        path: /tmp/oracle_status.txt
+        line: "successful grow-pvresize execution"
+        create: yes
+     
+  become: yes
+  when: grow_pvresize_status is changed and grow_pvresize_status.rc != 0  

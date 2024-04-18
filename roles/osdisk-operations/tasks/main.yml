@@ -1,5 +1,10 @@
 ---
 # tasks file for partitioning_mounting_osdisk
+- name: Check if marker for successful osdisk partition exists in file
+  shell: "grep -i 'successful osdisk partition execution' /tmp/oracle_status.txt"
+  register: osdisk_partition_status
+  ignore_errors: yes
+
 - block:
 
     - name: Check if logical volumes exist
@@ -76,5 +81,13 @@
       systemd:
         daemon_reload: yes
       when: lvcreate_opt_output.changed
-      ignore_errors: yes   
+      ignore_errors: yes
+
+    - name: Add marker to indicate successful of osdisk partition execution 
+      lineinfile:
+         path: /tmp/oracle_status.txt
+         line: "successful osdisk partition execution"
+         create: yes      
+
   become: yes    
+  when: osdisk_partition_status is changed and osdisk_partition_status.rc != 0
