@@ -3,8 +3,7 @@
 lv_extension_threshold:
   - { lvpath: "rootlv", resize: 8 }
   - { lvpath: "homelv", resize: 5 }
-  - { lvpath: "tmplv", resize: 5 }  
-    # - { lvpath: "varlv", resize: 10 }  
+  - { lvpath: "tmplv", resize: 5 }   
 
 #Oracle Software Path
 source_oracle_software_location: /home/eppadmin/oracle-packages/
@@ -19,8 +18,5 @@ disks:
     mount_point: /undo
   - name: /dev/sdf
     mount_point: /archive
-  - name: /dev/sdg
-    mount_point: /tmptsb
-  
- 
-oracle_swapspace: 8 
+  #- name: /dev/sdg
+  #  mount_point: /tmptsb 

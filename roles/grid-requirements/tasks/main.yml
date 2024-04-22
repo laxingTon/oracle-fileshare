@@ -25,15 +25,6 @@
         extra_opts: "-q"
     become_user: oracle
 
-  - name: Change ownership of /opt/oracle to oracle:oinstall
-    file:
-      path: /opt/oracle
-      owner: oracle
-      group: oinstall
-      recurse: yes
-      state: directory
-
-
   - name: Check if oracle-database-preinstall-19c is installed
     command: rpm -q i oracle-database-preinstall
     register: oracle_database_preinstall_installed

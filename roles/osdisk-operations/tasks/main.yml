@@ -29,7 +29,6 @@
       lineinfile:
         path: /etc/fstab
         line: "/dev/mapper/rootvg-swaplv  swap     swap    defaults     0 0"
-      notify: Reload systemd
       when: lvcreate_swap_output.changed
 
     - name: Activate swap
@@ -66,7 +65,6 @@
       lineinfile:
         path: /etc/fstab
         line: "/dev/mapper/rootvg-optlv       /opt    xfs     defaults        0       0"
-      notify: Reload systemd
       when: lvcreate_opt_output.changed
 
     - name: Mount /opt volume

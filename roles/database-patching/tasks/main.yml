@@ -29,6 +29,7 @@
         path: /tmp/oracle_status.txt
         line: "successful dbopatch execution"
         create: yes
+      become_user: root  
       when: db_opatch is changed and db_opatch.rc == 0
 
     become_user: oracle
@@ -60,6 +61,7 @@
         path: /tmp/oracle_status.txt
         line: "successful gridopatch execution"
         create: yes
+      become_user: root  
       when: grid_opatch is changed and grid_opatch.rc == 0
 
     when: gridopatch_status is changed and gridopatch_status.rc != 0
@@ -73,6 +75,10 @@
     shell: /opt/oracle/product/19.3.0/grid/OPatch/opatchauto apply /opt/oracle/software/patches/19.15.0/33859214/33803476
     register:  gridopatchapply_results
     when: gridopatchapply_status is changed and gridopatchapply_status.rc != 0
+
+  - debug:
+      var: gridopatchapply_results
+    when: gridopatchapply_results is changed and gridopatchapply_results.rc == 0      
 
   - name: Add marker to indicate successful of gridopatchapply execution
     lineinfile:

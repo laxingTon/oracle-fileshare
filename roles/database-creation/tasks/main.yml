@@ -30,8 +30,8 @@
       -sysPassword gyoFm8AYHsvZm48A \
       -systemPassword gyoFm8AYHsvZm48A \
       -storageType FS \
-      -datafileDestination /redo \
-      -recoveryAreaDestination /undo \
+      -datafileDestination /u01 \
+      -recoveryAreaDestination /redo \
       -redoLogFileSize 50 \
       -useOMF true \
       -totalMemory 4096 \

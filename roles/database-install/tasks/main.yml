@@ -24,15 +24,16 @@
         remote_src: yes
         extra_opts: "-q"
       become_user: oracle
-      register: unzip_stat
-      when: dbunzip_status is changed and dbunzip_status.rc != 0      
+      register: unzip_stat 
+
+    - debug:
+        var: unzip_stat      
 
     - name: Add marker to indicate successful of dbunzip execution
       lineinfile:
          path: /tmp/oracle_status.txt
          line: "successful dbunzip execution"
          create: yes
-      when: unzip_stat is changed and unzip_stat.rc == 0   
 
     - name: Check if response file exists
       stat:

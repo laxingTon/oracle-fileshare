@@ -105,17 +105,7 @@
         fstype: xfs
         state: mounted
       loop: "{{ disks }}"
-      when: lv_check is failed
-
-    - name: Change the permission for extra disks
-      file:
-        path: "{{ item.mount_point }}"
-        state: directory
-        owner: oracle
-        group: oinstall
-        mode: '0775'  
-      loop: "{{ disks }}"   
-      
+      when: lv_check is failed      
 
     - name: Add marker to indicate successful of extra partition execution 
       lineinfile:
