@@ -1,10 +1,21 @@
 ---
 # tasks file for database-install
+- name: Check if marker for successful dbinstall exists in file
+  shell: "grep -i 'successful dbinstall execution' /tmp/oracle_status.txt"
+  register: dbinstall_status
+  ignore_errors: yes
+
 - block:
     - name: Ensure software directory exists
       stat:
-        path: /opt/oracle/softwar
+        path: /opt/oracle/software
       register: software_dir
+
+    - name: Check if marker for successful dbunzip exists in file
+      shell: "grep -i 'successful dbunzip execution' /tmp/oracle_status.txt"
+      register: dbunzip_status
+      ignore_errors: yes
+      
 
     - name: Unzip Oracle DB Infrastructure Software
       unarchive:
@@ -13,14 +24,15 @@
         remote_src: yes
         extra_opts: "-q"
       become_user: oracle
+      register: unzip_stat
+      when: dbunzip_status is changed and dbunzip_status.rc != 0      
 
-    - name: Change ownership of /opt/oracle to oracle:oinstall
-      file:
-        path: /opt/oracle
-        owner: oracle
-        group: oinstall
-        recurse: yes
-        state: directory      
+    - name: Add marker to indicate successful of dbunzip execution
+      lineinfile:
+         path: /tmp/oracle_status.txt
+         line: "successful dbunzip execution"
+         create: yes
+      when: unzip_stat is changed and unzip_stat.rc == 0   
 
     - name: Check if response file exists
       stat:
@@ -59,24 +71,74 @@
         - { regexp: '^oracle.install.db.config.starterdb.enableRecovery=', line: 'oracle.install.db.config.starterdb.enableRecovery=false' }
       become_user: oracle  
       when: response_file_stat.stat.exists
+ 
 
     - name: Run prerequisites check
-      shell: "/opt/oracle/product/19.3.0/db/runInstaller -executePrereqs -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp"
+      shell: |
+        export CV_ASSUME_DISTID=RHEL8.0      
+        /opt/oracle/product/19.3.0/db/runInstaller -executePrereqs -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp
       register: prereq_check_result
       become_user: oracle
       ignore_errors: yes
 
-    - name: Check prerequisites check result
-      fail:
-        msg: "Prerequisites check failed. Please review the logs."
-      when: prereq_check_result.rc != 0
+    - debug:
+         var: prereq_check_result
+      ignore_errors: yes
+      
+
+    - name: Check if marker for successful dbruninstaller exists in file
+      shell: "grep -i 'successful dbruninstaller execution' /tmp/oracle_status.txt"
+      register: dbruninstaller_status
+      ignore_errors: yes
+      
 
     - name: Start Silent Database Installation
-      shell: "/opt/oracle/product/19.3.0/db/runInstaller -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp"
+      shell: |
+        export CV_ASSUME_DISTID=RHEL8.0      
+        /opt/oracle/product/19.3.0/db/runInstaller -silent -responseFile /opt/oracle/product/19.3.0/db/install/response/db_install.rsp
       register: db_installation_result
-      when: prereq_check_result.rc == 0
+      become_user: oracle
+      when: dbruninstaller_status is changed and dbruninstaller_status != 0
+
+    - debug:
+         var: db_installation_result
+      when: dbruninstaller_status is changed and dbruninstaller_status != 0
+
+
+    - name: Add marker to indicate successful of dbruninstaller execution
+      lineinfile:
+        path: /tmp/oracle_status.txt
+        line: "successful dbruninstaller execution"
+        create: yes
+      when:  db_installation_result is changed and db_installation_result.rc == 0
+
+    - name: Check if marker for successful dbrootsh exists in file
+      shell: "grep -i 'successful dbrootsh execution' /tmp/oracle_status.txt"
+      register: dbrootsh_status
+      ignore_errors: yes
 
     - name: Execute root.sh
       shell: "/opt/oracle/product/19.3.0/db/root.sh"
-      when: db_installation_result is succeeded
-  become: yes    
+      register: dbrootsh_execution
+      when: dbrootsh_status is changed and dbrootsh_status != 0 and db_installation_result.rc == 0
+
+    - debug:
+         var: dbrootsh_execution
+      when: dbrootsh_status is changed and dbrootsh_status != 0 and db_installation_result.rc == 0
+      
+
+    - name: Add marker to indicate successful of dbrootsh execution
+      lineinfile:
+         path: /tmp/oracle_status.txt
+         line: "successful dbrootsh execution"
+         create: yes
+      when: dbrootsh_execution is changed and dbrootsh_execution.rc == 0
+
+    - name: Add marker to indicate successful of dbinstall execution 
+      lineinfile:
+         path: /tmp/oracle_status.txt
+         line: "successful dbinstall execution"
+         create: yes      
+      
+  become: yes
+  when: dbinstall_status is changed and dbinstall_status.rc != 0
