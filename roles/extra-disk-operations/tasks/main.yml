@@ -107,6 +107,16 @@
       loop: "{{ disks }}"
       when: lv_check is failed
 
+    - name: Change the permission for extra disks
+      file:
+        path: "{{ item.mount_point }}"
+        state: directory
+        owner: oracle
+        group: oinstall
+        mode: '0775'  
+      loop: "{{ disks }}"   
+      
+
     - name: Add marker to indicate successful of extra partition execution 
       lineinfile:
         path: /tmp/oracle_status.txt

@@ -4,13 +4,14 @@
   vars_files:
     - vars.yml  
   roles:
-    - lvextend-operations  
-    - grow-partition-operations
-    - osdisk-operations     
-    - extra-disk-operations
-    - user-directory-setup
-    - reboot
-    - grid-requirements 
-    - grid-install 
-    - database-install
-    - database-creation
+     - lvextend-operations  
+     - grow-partition-operations
+     - osdisk-operations     
+     - extra-disk-operations
+     - user-directory-setup
+     - reboot
+     - grid-requirements 
+     - grid-install 
+     - database-install
+     - database-creation
+     - database-patching  

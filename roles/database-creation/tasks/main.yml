@@ -15,7 +15,7 @@
 
   - name: Run dbca command to create Oracle database
     shell: |
-      /opt/oracle/product/19.3.0/grid/bin/dbca -silent -createDatabase \
+      /opt/oracle/product/19.3.0/db/bin/dbca -silent -createDatabase \
       -gdbName PRCDB \
       -sid PRCDB \
       -responseFile NO_VALUE \
@@ -30,8 +30,8 @@
       -sysPassword gyoFm8AYHsvZm48A \
       -systemPassword gyoFm8AYHsvZm48A \
       -storageType FS \
-      -datafileDestination /data \
-      -recoveryAreaDestination /redo \
+      -datafileDestination /redo \
+      -recoveryAreaDestination /undo \
       -redoLogFileSize 50 \
       -useOMF true \
       -totalMemory 4096 \
